@@ -1,13 +1,5 @@
 setwd('C:/Projetos/Kaggle/House Prices - Advanced Regression Techniques')
 
-install.packages('ggplot2', dependencies = T)
-install.packages('caret', dependencies = T)
-install.packages('rlang')
-update.packages('caret', checkBuilt=TRUE)
-update.packages('rlang', checkBuilt=TRUE)
-remove.packages('rlang')
-
-library(rlang)
 library(corrplot)
 library(knitr)
 library(randomForest)
