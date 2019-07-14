@@ -1,5 +1,13 @@
 setwd('C:/Projetos/Kaggle/House Prices - Advanced Regression Techniques')
 
+install.packages('ggplot2', dependencies = T)
+install.packages('caret', dependencies = T)
+install.packages('rlang')
+update.packages('caret', checkBuilt=TRUE)
+update.packages('rlang', checkBuilt=TRUE)
+remove.packages('rlang')
+
+library(rlang)
 library(corrplot)
 library(knitr)
 library(randomForest)
@@ -215,7 +223,7 @@ trainClean2 <- trainClean[amostra==2,]
 # Modelo 1
 set.seed(2017)
 modelo = randomForest(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
-                        HouseStyle+ OverallQual+OverallCond+YearBuilt+
+                        OverallQual+OverallCond+YearBuilt+
                         YearRemodAdd+Exterior1st+Exterior2nd+ExterQual+BsmtQual +BsmtExposure+
                         BsmtFinType1+X1stFlrSF+X2ndFlrSF, 
                         data = trainClean1, ntree= 350)
@@ -228,7 +236,7 @@ View(importance(modelo))
 # Modelo 2
 set.seed(12345)
 modelo2 = train(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
-                  HouseStyle+ OverallQual+OverallCond+YearBuilt+
+                  OverallQual+OverallCond+YearBuilt+
                   YearRemodAdd+Exterior1st+Exterior2nd+ExterQual+BsmtQual +BsmtExposure+
                   BsmtFinType1+X1stFlrSF+X2ndFlrSF, 
                 data = trainClean1, method= 'rf', 
@@ -237,7 +245,8 @@ modelo2 = train(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
 plot(modelo2)
 modelo2$results
 class(modelo2)
-varImp(modelo2,scale = T)
+a <- varImp(modelo2,scale = T)
+View(a$importance)
 
 previsao = predict(modelo, trainClean2)
 previsao2 = predict(modelo2, trainClean2)
@@ -252,19 +261,34 @@ confusao
 confusao2 = confusionMatrix(reference = trainClean2$MasVnrType, data = previsao2)
 confusao2
 
+# Previsao final será com o modelo1 
+
+modelo3 = randomForest(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
+                        OverallQual+OverallCond+YearBuilt+
+                        YearRemodAdd+Exterior1st+Exterior2nd+ExterQual+BsmtQual +BsmtExposure+
+                        BsmtFinType1+X1stFlrSF+X2ndFlrSF, 
+                      data = trainClean, ntree= 350)
+
 
 # Podemos verificar pela confusao que há uma grande chance de prevermos os valores NA's
 # da variável MasVnrType sem gerarmos um alto ruído para o modelo.
 
 # Imputando a previsao nos missing values do dataset  train
-imput = predict(modelo2, testClean)
-imput
+imput = predict(modelo3, testClean)
+table(imput)
 imput <- as.character(imput)
 
+View(all[is.na(all$MasVnrType) | is.na(all$MasVnrArea), c('MasVnrType','MasVnrArea')])
 
 all$MasVnrType <- as.character(all$MasVnrType)
 all$MasVnrType[is.na(all$MasVnrType)] <- imput
 all$MasVnrType <- as.factor(all$MasVnrType)
+
+# Pegando a mediana de MasVnrArea para imputar
+all$MasVnrArea <- ifelse(all$MasVnrType != 'None' & is.na(all$MasVnrArea), 
+                         mean(all$MasVnrArea[!is.na(all$MasVnrArea)]),
+                         ifelse(all$MasVnrType == 'None' & is.na(all$MasVnrArea),
+                                0,all$MasVnrArea))
 
 #----------------------------------------------------------------------------------
 
@@ -366,6 +390,9 @@ kable(all[(is.na(all$BsmtFullBath)|is.na(all$BsmtHalfBath)|is.na(all$BsmtFinSF1)
        is.na(all$BsmtUnfSF)|is.na(all$TotalBsmtSF)), c('BsmtQual', 'BsmtFullBath', 'BsmtHalfBath', 
                                                        'BsmtFinSF1', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF')])
 
+str(all[,c('BsmtQual', 'BsmtFullBath', 'BsmtHalfBath', 
+           'BsmtFinSF1', 'BsmtFinSF2', 'BsmtUnfSF', 'TotalBsmtSF')])
+
 all$BsmtFullBath <- ifelse(is.na(all$BsmtFullBath),0,all$BsmtFullBath)
 all$BsmtHalfBath <- ifelse(is.na(all$BsmtHalfBath),0,all$BsmtHalfBath)
 all$BsmtFinSF1 <- ifelse(is.na(all$BsmtFinSF1),0,all$BsmtFinSF1)
@@ -380,6 +407,37 @@ table(all$Exterior1st)
 
 all$Exterior2nd[is.na(all$Exterior2nd)] <- names(sort(table(all$Exterior2nd),decreasing=T))[1]
 table(all$Exterior2nd)
+
+# Como Há apenas 1 observação com classe diferente, eu irei desconsiderar a variável Utilities
+table(all$Utilities)
+View(all[is.na(all$Utilities),])
+all$Utilities <- NULL
+
+# Como só há 1 NA para a variável Electrical, irei sortear a 
+#classe com a maior frequência para fazer a imputação.
+table(all$Electrical)
+summary(all$Electrical[is.na(all$Electrical)])
+
+
+# Esta é uma forma mais linear de fazer uma consulta
+table(all$Electrical) %>% sort(decreasing = T) %>% names()
+# Este é a forma de uma função dentro de outra para trazer a consulta
+names(sort(decreasing = T, table(all$Electrical)))[1] -> all$Electrical[is.na(all$Electrical)]
+
+# Como só há 1 NA para a variável KitchenQual, irei sortear a 
+#classe com a maior frequência para fazer a imputação.
+summary(all$KitchenQual[is.na(all$KitchenQual)])
+table(all$KitchenQual)
+names(sort(decreasing = T, table(all$KitchenQual)))[1] -> all$KitchenQual[is.na(all$KitchenQual)]
+
+View(table(all[all$KitchenQual=='Gd' | all$KitchenQual=='TA',c('KitchenAbvGr', 'KitchenQual', 'SalePrice')]))
+
+# Como só há 1 NA para a variável SaleType, irei sortear a 
+#classe com a maior frequência para fazer a imputação.
+summary(all$SaleType[is.na(all$SaleType)])
+table(all$SaleType)
+names(sort(decreasing = T, table(all$SaleType)))[1] -> all$SaleType[is.na(all$SaleType)]
+
 
 
 kable(sapply(all, function(x) sum(is.na(x))))
