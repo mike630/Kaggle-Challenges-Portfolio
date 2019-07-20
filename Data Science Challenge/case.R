@@ -1,5 +1,5 @@
 # Selecionando diretório
-setwd('C:/Projetos/BUSINESS CASES/ZAP - Cientista de Dados')
+setwd('C:/Projetos/Kaggle/Data Science Challenge')
 
 #--------------------------------------------------------------------------
 # Instalando pacotes
@@ -347,19 +347,53 @@ allClean$`all$id` <- NULL
 # Executando nosso modelo
 
 set.seed(5000000)
-my_control <-trainControl(method="cv", number=5)
 
-lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.001,0.1,by = 0.0005))
+#Cross Validation
+my_control <-trainControl(method="cv", number=10)
+
+# Lasso Modelo
+lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.0001,0.1,by = 0.0005))
+# alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
 lasso_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', trControl= my_control, 
                    tuneGrid=lassoGrid) 
-
 lasso_mod
 lasso_mod$bestTune
 min(lasso_mod$results$RMSE)
+min(lasso_mod$results$MAE)
 max(lasso_mod$results$Rsquared)
+
+set.seed(5000000)
+
+# Ridge Modelo
+ridgeGrid <- expand.grid(alpha = 0, lambda = seq(0.0001,0.1,by = 0.0005)) 
+# alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) for elastic net regression.
+ridge_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', trControl= my_control, 
+                   tuneGrid=ridgeGrid) 
  
+ridge_mod
+ridge_mod$bestTune
+min(ridge_mod$results$RMSE)
+min(ridge_mod$results$MAE)
+max(ridge_mod$results$Rsquared)
+
+
+# Elastic Net Modelo
+set.seed(5000000)
+
+elasticnet_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', trControl= my_control, 
+                   tuneLength = 10) 
+
+elasticnet_mod
+elasticnet_mod$bestTune
+min(elasticnet_mod$results$RMSE)
+min(elasticnet_mod$results$MAE)
+max(elasticnet_mod$results$Rsquared)
+
+# Diante das análises dos modelos do método glmnet acima, podemos verificar que Elastic Net cujo qual tem um um alpha 
+# entre 0 e 1, é o modelo mais eficiente entre os três.
+
 # Prevendo as vendas
-previsao = predict(lasso_mod, allClean[(dim(train3)[1]+1):dim(allClean)[1],])
+previsao = predict(elasticnet_mod, allClean[(dim(train3)[1]+1):dim(allClean)[1],])
 previsao <- exp(previsao) # precisamos reverter o log para o valor real
 
 previsao <- as.data.frame(previsao)
@@ -385,7 +419,7 @@ write.csv(previsao,'final.csv',row.names = F)
 
 # 2)Em quais bairros ou em quais faixas de preço o seu modelo performa melhor?
 
-varImp(lasso_mod)
+varImp(elasticnet_mod)
 
 # RESPOSTA: DE ACORDO COM A LINHA DE CÓDIGO ACIMA, PODEMOS NOTAR QUE OS BAIRROS JARDIM PAULISTANO,
 # JARDIM AMERICA E VILA NOVA CONCEICAO SÃO OS BAIRROS MAIS IMPORTANTES DO MODELO.
