@@ -10,6 +10,8 @@ install.packages('gridExtra')
 install.packages('psych')
 install.packages('caret')
 install.packages('mice')
+install.packages('xgboost')
+install.packages('corrplot')
 #--------------------------------------------------------------------------
 # Carregando pacotes requeridos
 library(jsonlite)
@@ -19,6 +21,8 @@ library(gridExtra)
 library(psych)
 library(caret)
 library(mice)
+library(xgboost)
+library(corrplot)
 #--------------------------------------------------------------------------
 # Carregando os datasets train e test nas variáveis
 
@@ -228,13 +232,15 @@ grid.arrange(p1,p2,p3,p4,p5,p6,p7, nrow=3)
 #----------------------------------------------------------------------------------------
 # Correlação das variáveis númericas
 
-kable(cor(train3[,c('usableAreas','parkingSpaces','bathrooms','totalAreas',
-                    'bedrooms','suites', 'price')], use = 'na.or.complete'))
+correlacao <- cor(train3[,c('usableAreas','parkingSpaces','bathrooms','totalAreas',
+                    'bedrooms','suites', 'price')], use = 'na.or.complete')
+
+corrplot.mixed(correlacao, tl.col="black", order = 'hclust', tl.pos = 'lt', diag = 'n')
 
 plot(train3$totalArea, train3$bathrooms)
 # De forma lógica, totalArea é uma variável que corresponde à usableAreas, por conta
 # disso e também por conter bastante NA's e correlação alta com bathrooms, eu irei excluir 
-#esta variável da nossa análise.
+# esta variável da nossa análise.
 train3$totalAreas <- NULL
 
 kable(sapply(train3, function(x) sum(is.na(x))))
@@ -354,8 +360,8 @@ my_control <-trainControl(method="cv", number=10)
 # Lasso Modelo
 lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.0001,0.1,by = 0.0005))
 # alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
-lasso_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', trControl= my_control, 
-                   tuneGrid=lassoGrid) 
+lasso_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
+                   trControl= my_control,tuneGrid=lassoGrid) 
 lasso_mod
 lasso_mod$bestTune
 min(lasso_mod$results$RMSE)
@@ -366,9 +372,9 @@ set.seed(5000000)
 
 # Ridge Modelo
 ridgeGrid <- expand.grid(alpha = 0, lambda = seq(0.0001,0.1,by = 0.0005)) 
-# alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) for elastic net regression.
-ridge_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', trControl= my_control, 
-                   tuneGrid=ridgeGrid) 
+# alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
+ridge_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
+                   trControl= my_control,tuneGrid=ridgeGrid) 
  
 ridge_mod
 ridge_mod$bestTune
@@ -380,8 +386,8 @@ max(ridge_mod$results$Rsquared)
 # Elastic Net Modelo
 set.seed(5000000)
 
-elasticnet_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', trControl= my_control, 
-                   tuneLength = 10) 
+elasticnet_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
+                        trControl= my_control, tuneLength = 10) 
 
 elasticnet_mod
 elasticnet_mod$bestTune
@@ -392,12 +398,87 @@ max(elasticnet_mod$results$Rsquared)
 # Diante das análises dos modelos do método glmnet acima, podemos verificar que Elastic Net cujo qual tem um um alpha 
 # entre 0 e 1, é o modelo mais eficiente entre os três.
 
+# Salvando Modelo
+saveRDS(elasticnet_mod, file = 'elasticnet_mod.rda')
+elasticnet_mod <- readRDS('elasticnet_mod.rda')
+
 # Prevendo as vendas
-previsao = predict(elasticnet_mod, allClean[(dim(train3)[1]+1):dim(allClean)[1],])
-previsao <- exp(previsao) # precisamos reverter o log para o valor real
+elasticnet_prev = predict(elasticnet_mod, allClean[(dim(train3)[1]+1):dim(allClean)[1],])
+
+# eXtreme Gradient Boosting - XGBoost
+xgb_params <- list(
+  booster = 'gbtree',
+  objective = 'reg:linear',
+  colsample_bytree=1,
+  eta=0.55,
+  max_depth=4,
+  min_child_weight=3,
+  alpha=0.3,
+  lambda=0.25,
+  gamma=0, # less overfit
+  subsample=0.7)
+
+dtrain <- xgb.DMatrix(as.matrix(allClean[1:dim(train3)[1],]), label = train3$price)
+dtest <- xgb.DMatrix(as.matrix(allClean[(dim(train3)[1]+1):dim(allClean)[1],]))
+
+set.seed(5000000)
+xgboost_mod <- xgb.cv(xgb_params, dtrain, nrounds = 750, metrics = 'rmse', 
+                      print_every_n = 50,nfold = 5,early_stopping_rounds = 200)
+
+ xgboost_mod$best_iteration
+xgboost_mod$best_ntreelimit
+xgboost_mod$evaluation_log$train_rmse_mean[xgboost_mod$best_iteration]
+xgboost_mod$evaluation_log$test_rmse_mean[xgboost_mod$best_iteration]
+
+set.seed(5000000)
+xgboost_mod2 <- xgb.train(data = dtrain, params=xgb_params, nrounds = 721)
+
+# Salvando Modelo
+saveRDS(xgboost_mod2, file = 'xgboost_mod2.rda')
+xgboost_mod2 <- readRDS('xgboost_mod2.rda')
+
+ # Prevendo as vendas
+xgboost_prev = predict(xgboost_mod2, dtest)
+
+# Gradiente Boost Model - GBM
+gbmGrid <- expand.grid(n.trees = 150, 
+                       interaction.depth = c(2), 
+                       shrinkage = c(0.9), 
+                       n.minobsinnode = c(10))
+
+nrow(gbmGrid)
+
+set.seed(5000000)
+gbm_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method = "gbm", 
+                metric = "RMSE", trControl = my_control, 
+                tuneGrid =  gbmGrid)
+
+
+gbm_mod$bestTune
+gbm_mod
+
+# Salvando Modelo
+saveRDS(gbm_mod, file = 'gbm_mod.rda')
+gbm_mod <- readRDS('gbm_mod.rda')
+
+# Prevendo as vendas
+gbm_prev = predict(gbm_mod, allClean[(dim(train3)[1]+1):dim(allClean)[1],])
+
+ # Correlação das previsões nos diferentes modelos.
+relacao <- cbind.data.frame(xgboost_prev,elasticnet_prev,gbm_prev)
+
+kable(cor(relacao))
+
+# Como o modelo XGBoost teve um RMSE melhor do que o ElasticNet e GBM, eu irei fazer
+# média ponderada dos resultados do XGBoost e GBM, já que o ElasticNet não obteve
+# um RMSE eficiente.
+
+previsao <- (((2*xgboost_prev)+gbm_prev)/3)
+
+previsao <- round((exp(previsao)-1),2) # precisamos reverter o log para o valor real
 
 previsao <- as.data.frame(previsao)
-previsao$id <- rownames(previsao)
+previsao$id <- rownames(allClean[(dim(train3)[1]+1):dim(allClean)[1],])
 colnames(previsao) <- c('price','id')
 
 write.csv(previsao,'final.csv',row.names = F)
@@ -420,9 +501,12 @@ write.csv(previsao,'final.csv',row.names = F)
 # 2)Em quais bairros ou em quais faixas de preço o seu modelo performa melhor?
 
 varImp(elasticnet_mod)
-
 # RESPOSTA: DE ACORDO COM A LINHA DE CÓDIGO ACIMA, PODEMOS NOTAR QUE OS BAIRROS JARDIM PAULISTANO,
 # JARDIM AMERICA E VILA NOVA CONCEICAO SÃO OS BAIRROS MAIS IMPORTANTES DO MODELO.
+
+mat <- xgb.importance (feature_names = colnames(allClean[1:dim(train3)[1],]),model = xgboost_mod2)
+xgb.ggplot.importance(importance_matrix = mat[1:20], rel_to_first = TRUE)
+
 
 
 # 3)Se você tivesse que estimar o valor dos imóveis com apenas 3 campos, quais seriam eles?
