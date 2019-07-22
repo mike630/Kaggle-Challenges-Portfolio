@@ -11,6 +11,7 @@ library(dplyr)
 library(ggplot2)
 library(ggrepel)
 library(psych)
+library(xgboost)
 
 train <- read.csv(file.choose(), na.strings = c('NA', ''))
 View(train)
@@ -420,7 +421,7 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=SalePrice, y= BsmtFinSF1))+
 # que mais enviesa nossas análises e deve ser retirada para fazermos a modelagem.
 # Irei retirar mais alguns outliers
 
-all <-all[-c(1299,582,1191,524,298),]
+all <- all[-c(1299,582,1191,524,298),]
 
 #-----------------------------------------------------------------------------------
 
@@ -494,7 +495,7 @@ cor_decresc2 <- as.matrix(sort(correlacao2[,'SalePrice'], decreasing = TRUE))
 
 # ---------------------------------------------------------------------------------
 
-# Deletando variáveis que tenha forte correlação independente com outra variável independente,
+# Deletando variáveis que tenha forte correlação com outra variável independente,
 # se elas tiverem realmente a possibilidade de estarem demonstrando o mesmo tipo de dados.
 
 # De acordo com o gráfico corrplot, eu irei excluir as seguintes variáveis:
@@ -502,11 +503,159 @@ cor_decresc2 <- as.matrix(sort(correlacao2[,'SalePrice'], decreasing = TRUE))
 all$GarageArea <- NULL
 all$TotRmsAbvGrd <- NULL
 all$YearRemodAdd <- NULL
+all$TotalBsmtSF <- NULL
+
 
 # Com relação as variáveis categóricas, irei excluir Exterior2nd
 
 all$Exterior2nd <- NULL
 
+# Também devo verificar as variáveis categóricas, se elas tem correlação entre si.
+
+# OverallQual x OverallCond
+ggplot(all, aes(x = as.factor(OverallCond))) + geom_bar(stat = 'count')
+
+ggplot(all, aes(x = as.factor(OverallQual))) + geom_bar(stat = 'count')
+
+a <- as.numeric(all$OverallQual)
+b <- as.numeric(all$OverallCond)
+cor(a,b)
+# Não há correlação
+
+# GarageQual x GarageCond
+ggplot(all, aes(x = as.factor(GarageQual))) + geom_bar(stat = 'count')
+
+ggplot(all, aes(x = as.factor(GarageCond))) + geom_bar(stat = 'count')
+
+a <- as.numeric(all$GarageQual)
+b <- as.numeric(all$GarageCond)
+cor(a,b)
+# Correlação de 54%, irei mantê-la
+
+# BsmtQual x BsmtCond
+ggplot(all, aes(x = as.factor(BsmtQual))) + geom_bar(stat = 'count')
+
+ggplot(all, aes(x = as.factor(BsmtCond))) + geom_bar(stat = 'count')
+
+a <- as.numeric(all$BsmtQual)
+b <- as.numeric(all$BsmtCond)
+cor(a,b)
+# Não há correlação
+
+# ExterQual x ExterCond
+
+ggplot(all, aes(x = as.factor(ExterQual))) + geom_bar(stat = 'count')
+
+ggplot(all, aes(x = as.factor(ExterCond))) + geom_bar(stat = 'count')
+
+a <- as.numeric(all$ExterQual)
+b <- as.numeric(all$ExterCond)
+cor(a,b)
+# Não há correlação
+
+# Deletarei variáveis que tenha baixa variabilidade do modelo
+
+ggplot(all, aes(x = as.factor(BsmtCond))) + geom_bar(stat = 'count')
+table(all$BsmtCond)
+all$BsmtCond <- NULL
+
+ggplot(all, aes(x = as.factor(GarageCond))) + geom_bar(stat = 'count')
+table(all$GarageCond)
+all$GarageCond <- NULL
+
+ggplot(all, aes(x = as.factor(GarageQual))) + geom_bar(stat = 'count')
+table(all$GarageQual)
+all$GarageQual <- NULL
+
+ggplot(all, aes(x = as.factor(ExterCond))) + geom_bar(stat = 'count')
+table(all$ExterCond)
+all$ExterCond <- NULL
+
+ggplot(all, aes(x = as.factor(Street))) + geom_bar(stat = 'count') 
+table(all$Street)
+all$Street <- NULL
+
+ggplot(all, aes(x = as.factor(Alley))) + geom_bar(stat = 'count') 
+table(all$Alley)
+all$Alley <- NULL
+
+ggplot(all, aes(x = as.factor(LandContour))) + geom_bar(stat = 'count') 
+table(all$LandContour)
+all$LandContour <- NULL
+
+ggplot(all, aes(x = as.factor(LandSlope))) + geom_bar(stat = 'count') 
+table(all$LandSlope)
+all$LandSlope <- NULL
+
+ggplot(all, aes(x = as.factor(Condition1))) + geom_bar(stat = 'count') 
+table(all$Condition1)
+all$Condition1 <- NULL
+
+ggplot(all, aes(x = as.factor(Condition2))) + geom_bar(stat = 'count') 
+table(all$Condition2)
+all$Condition2 <- NULL
+
+ggplot(all, aes(x = as.factor(BldgType))) + geom_bar(stat = 'count') 
+table(all$BldgType)
+all$BldgType <- NULL
+
+ggplot(all, aes(x = as.factor(RoofMatl))) + geom_bar(stat = 'count')
+table(all$RoofMatl)
+all$RoofMatl <- NULL
+
+ggplot(all, aes(x = as.factor(Heating))) + geom_bar(stat = 'count') 
+table(all$Heating)
+all$Heating <- NULL
+
+ggplot(all, aes(x = as.factor(CentralAir))) + geom_bar(stat = 'count') 
+table(all$CentralAir)
+all$CentralAir <- NULL
+
+ggplot(all, aes(x = as.factor(Electrical))) + geom_bar(stat = 'count') 
+table(all$Electrical)
+all$Electrical <- NULL
+
+ggplot(all, aes(x = as.factor(Functional))) + geom_bar(stat = 'count') 
+table(all$Functional)
+all$Functional <- NULL
+
+ggplot(all, aes(x = as.factor(PavedDrive))) + geom_bar(stat = 'count') 
+table(all$PavedDrive)
+all$PavedDrive <- NULL
+
+ggplot(all, aes(x = as.factor(PoolQC))) + geom_bar(stat = 'count') 
+table(all$PoolQC)
+all$PoolQC <- NULL
+
+ggplot(all, aes(x = as.factor(MiscFeature))) + geom_bar(stat = 'count') 
+table(all$MiscFeature)
+all$MiscFeature <- NULL
+
+ggplot(all, aes(x = as.factor(SaleType))) + geom_bar(stat = 'count')
+table(all$SaleType)
+all$SaleType <- NULL
+
+ggplot(all, aes(x = as.factor(MSSubClass))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(MSZoning))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(LotShape))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(LotConfig))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(Neighborhood))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(HouseStyle))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(RoofStyle))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(Exterior1st))) + geom_bar(stat = 'count') 
+ggplot(all, aes(x = as.factor(MasVnrType))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(ExterQual))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(Foundation))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(BsmtExposure))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(BsmtFinType1))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(BsmtFinType2))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(HeatingQC))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(SaleCondition ))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(KitchenQual))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(FireplaceQu))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(GarageType))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(GarageFinish))) + geom_bar(stat = 'count')
+ggplot(all, aes(x = as.factor(Fence))) + geom_bar(stat = 'count')
 #---------------------------------------------------------------------------------
 
 #Visualizando gráfico de frequência de SalePrice
@@ -530,12 +679,17 @@ skew(log(all$SalePrice))
 qqnorm(all$SalePrice)
 qqline(all$SalePrice)
 
+all$SalePrice <- log(all$SalePrice)
+
 # Normalizando variáveis numéricas com mais de 0.8 de skew e pre-processando todas
 all$Id <- as.character(all$Id)
 
 numericVars2 <- which(sapply(all, is.numeric))
 
-skewed <- as.data.frame(ifelse(skew(all[,numericVars2]) > 0.8 | skew(all[,numericVars2]) < -0.8, 
+numericVars2 <- numericVars2[-which(names(numericVars2)=='SalePrice')] 
+# Removendo SalePrice que já está com log e não pode ser preprocessado
+
+skewed <- as.data.frame(ifelse(skew(all[,numericVars2]) > 0.7 | skew(all[,numericVars2]) < -0.7, 
                  log(all[,numericVars2]+1),all[,numericVars2]))
 
 colnames(skewed) <- names(numericVars2)
@@ -544,116 +698,152 @@ colnames(skewed) <- names(numericVars2)
 # Preprocessing and predicting it
 
 # PreProcessing dataset Train and predicting it
-skewed_yes_saleprice <- skewed[!is.na(skewed$SalePrice),]
-preNumVars <- preProcess(skewed_yes_saleprice, method = c('center','scale'),na.remove = T)
+preNumVars <- preProcess(skewed, method = c('center','scale'),na.remove = T)
 preNumVars
-trainClean_NumVars <- predict(preNumVars,skewed_yes_saleprice)
+trainClean_NumVars <- predict(preNumVars,skewed)
 dim(trainClean_NumVars)
 
 
-# Juntando as variáveis numéricas e categóricas do dataset Train
+# Transformando variáveis categóricas em dummies para facilitar nosso modelo a prever
+# de forma mais eficiente.
 categoricalVars2 <- which(sapply(all,is.factor))
 
-trainClean_ClassVars <- all[!is.na(all$SalePrice),categoricalVars2]
-dim(trainClean_ClassVars)
-trainClean <- cbind(trainClean_NumVars,trainClean_ClassVars)
+dummy <- as.data.frame(model.matrix(~.-1,all[,categoricalVars2]))
+dim(dummy)
+
+# Juntando variáveis numéricas com variáveis dummies
+trainClean <- cbind(trainClean_NumVars,dummy, all$SalePrice)
+colnames(trainClean)[which(colnames(trainClean)== 'all$SalePrice')] <- 'SalePrice'
 dim(trainClean)
 
-#******************************************************************************************
 
-# PreProcessing dataset Test and predicting it
-skewed_n_saleprice <- skewed[is.na(skewed$SalePrice),]
-skewed_n_saleprice$SalePrice <- NULL
-preNumVars2 <- preProcess(skewed_n_saleprice, method = c('center','scale'),na.remove = T)
-preNumVars2
-testClean_NumVars2 <- predict(preNumVars2,skewed_n_saleprice)
-testClean_NumVars2$SalePrice <- NA
-dim(testClean_NumVars2)
-
-# Juntando as variáveis numéricas e categóricas do dataset Train
-
-categoricalVars2 <- which(sapply(all,is.factor))
-
-testClean_ClassVars <- all[is.na(all$SalePrice),categoricalVars2]
-dim(testClean_ClassVars)
-testClean <- cbind(testClean_NumVars2,testClean_ClassVars)
-dim(testClean)
 
 #------------------------------------------------------------------------------------------
 # Modelagem e previsao final
  
-my_control <- trainControl(method="cv", number=5)
-# Modelo 1
+my_control <- trainControl(method="cv", number=10)
+
+amostra = sample(2,dim(trainClean)[1], replace = T, prob = c(0.7,0.3))
+
+treino = trainClean[!is.na(trainClean$SalePrice) & amostra==1,] 
+
+teste = trainClean[!is.na(trainClean$SalePrice) & amostra==2,]
+
+# Modelo 7
 set.seed(2017)
-modelo7 = lm(SalePrice~OverallQual+Neighborhood+BsmtQual+ExterQual+KitchenQual+FireplaceQu+
-               MSSubClass+GarageFinish+Exterior1st+BsmtExposure+GarageType+GrLivArea+TotalBsmtSF+
-               GarageCars+X1stFlrSF+FullBath+YearBuilt+MasVnrArea+Fireplaces+BsmtFinSF1,data = trainClean)
+lm_mod = lm(SalePrice ~ .,data = trainClean[!is.na(trainClean$SalePrice),])
 
-trainClean$YearRemodAdd
+summary(lm_mod)
 
-summary(modelo7)
+# Verificando com validações
+treino_mod = lm(SalePrice ~ .,data = treino)
+summary(lm_mod)
+modelo7_prev = predict(treino_mod, teste[,-which(colnames(treino)=='SalePrice')])
+RMSE(pred = modelo7_prev, obs = teste[,'SalePrice'])
 
-varImp(modelo7)
+# Prevendo as vendas
+lm_prev = predict(lm_mod,trainClean[is.na(trainClean$SalePrice),
+                                    -which(colnames(trainClean)=='SalePrice')])
 
-modelo7 = lm(SalePrice~.,data = trainClean)
+# Lasso Modelo
+set.seed(50000)
+lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.00001,0.1,by = 0.0005))
+# alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
+lasso_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                   method='glmnet', trControl= my_control,tuneGrid=lassoGrid) 
 
+lasso_mod
+lasso_mod$bestTune
+min(lasso_mod$results$RMSE)
+min(lasso_mod$results$MAE)
+max(lasso_mod$results$Rsquared)
 
-set.seed(2017)
-modelo8 = train(SalePrice~OverallQual+Neighborhood+BsmtQual+ExterQual+KitchenQual+FireplaceQu+
-                  MSSubClass+GarageFinish+Exterior1st+BsmtExposure+GarageType+GrLivArea+TotalBsmtSF+
-                  GarageCars+X1stFlrSF+FullBath+YearBuilt+MasVnrArea+Fireplaces+BsmtFinSF1,
-                trControl=my_control, method = 'rf',
-                data = trainClean)
-# Modelo 9
-set.seed(12345)
+#Importância
+varImp(lasso_mod)
 
-xgb_grid = expand.grid(nrounds = 300,
-                       eta = c(0.1, 0.05, 0.01),
-                       max_depth = c(2, 3, 4, 5, 6),
-                       gamma = 0,
-                       colsample_bytree=1,
-                       min_child_weight=c(1, 2, 3, 4 ,5),
-                       subsample=1)
+# Prevendo as vendas
+lasso_prev = predict(lasso_mod, trainClean[is.na(trainClean$SalePrice),
+                                           -which(colnames(trainClean)=='SalePrice')])
 
-modelo9 = train(SalePrice~OverallQual+Neighborhood+BsmtQual+ExterQual+KitchenQual+FireplaceQu+
-                  MSSubClass+GarageFinish+Exterior1st+BsmtExposure+GarageType+GrLivArea+TotalBsmtSF+
-                  GarageCars+X1stFlrSF+FullBath+YearBuilt+MasVnrArea+Fireplaces+BsmtFinSF1,trControl=my_control, method = 'xgbTree', data = trainClean,
-                tuneGrid = xgb_grid)
+# Ridge Modelo
+set.seed(50000)
+ridgeGrid <- expand.grid(alpha = 0, lambda = seq(0.00001,0.1,by = 0.0005)) 
+# alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
+ridge_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                   method='glmnet',trControl= my_control,tuneGrid=ridgeGrid) 
 
-
-modelo9
-summary(modelo9)
-
-# Modelo10
-lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.001,0.1,by = 0.0005))
-
-modelo10 = train(SalePrice~., method='glmnet', trControl=my_control, data = trainClean,
-                tuneGrid=lassoGrid) 
-
-min(modelo10$results$RMSE)
-modelo10$bestTune
-varImp(modelo10,scale=T)
-
-rownames(testClean[testClean$MSSubClass == '150',])
-rownames(testClean[testClean$MSSubClass == '150',])
-
-testClean2 <- testClean[testClean$MSSubClass != '150',]
-testClean2 <- testClean[testClean$OverallCond != '150',]
-
-levels(testClean2$OverallCond) -> levels(trainClean$OverallCond)
-
-previsao = predict(modelo7, testClean2)
-previsao <- exp(previsao)#need to reverse the log to the real values
-all_id2 <- names(previsao)
+ridge_mod
+ridge_mod$bestTune
+min(ridge_mod$results$RMSE)
+min(ridge_mod$results$MAE)
+max(ridge_mod$results$Rsquared)
 
 
-all2 <- as.data.frame(cbind(all[is.na(all$SalePrice), c('Id')],previsao))
+# Elastic Net Modelo
+set.seed(50000)
+elasticnet_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),],
+                        method='glmnet', trControl= my_control, tuneLength = 25) 
 
-colnames(all2) <- c('Id','SalePrice')
+elasticnet_mod
+elasticnet_mod$bestTune
+min(elasticnet_mod$results$RMSE)
+min(elasticnet_mod$results$MAE)
+max(elasticnet_mod$results$Rsquared)
 
-dim(all2)
+# eXtreme Gradient Boosting - XGBoost
+xgb_params <- list(
+  booster = 'gbtree',
+  objective = 'reg:linear',
+  colsample_bytree=0.9,
+  eta=0.071,
+  max_depth=2,
+  min_child_weight=5,
+  alpha=0.41,
+  lambda=0.35,
+  gamma=0.0001, # less overfit
+  subsample=0.8)
 
-kable(sapply(all2, function(x) sum(is.na(x))))
+dtrain <- xgb.DMatrix(as.matrix(trainClean[!is.na(trainClean$SalePrice),
+                                           -which(colnames(trainClean)=='SalePrice')]),
+                      label = as.matrix(trainClean$SalePrice[!is.na(trainClean$SalePrice)]))
 
-write.csv(all2, file = 'all2.csv', row.names = F )
+dtest <- xgb.DMatrix(as.matrix(trainClean[is.na(trainClean$SalePrice),
+                                          -which(colnames(trainClean)=='SalePrice')]))
+
+set.seed(50000)
+xgboost_mod <- xgb.cv(xgb_params, data = dtrain,nrounds = 1000, metrics = 'rmse', 
+                      print_every_n = 50, nfold = 10)
+
+xgboost_mod2 <- xgb.train(data = dtrain, params=xgb_params, nrounds = 1000)
+
+# Importância
+mat <- xgb.importance (feature_names = colnames(trainClean[!is.na(trainClean$SalePrice),
+                                                           -which(colnames(trainClean)=='SalePrice')]),
+                       model = xgboost_mod2)
+
+xgb.ggplot.importance(importance_matrix = mat[1:20], rel_to_first = TRUE)
+
+
+xgboost_prev = predict(xgboost_mod2, dtest)
+
+#Correlacao
+correlacao <- cbind(lm_prev,lasso_prev,xgboost_prev)
+cor(correlacao)
+
+# Previsao Finallasso_prev
+previsao <- (((2*lasso_prev)+(3*lm_prev)+xgboost_prev)/6)
+
+previsao <- as.data.frame(exp(previsao))#need to reverse the log to the real values
+
+previsao$id <- rownames(trainClean[is.na(trainClean$SalePrice),])
+
+colnames(previsao) <- c('SalePrice','Id')
+
+previsao$SalePrice <- round(previsao$SalePrice)
+
+dim(previsao)
+
+kable(sapply(previsao, function(x) sum(is.na(x))))
+
+write.csv(previsao, file = 'previsao.csv', row.names = F )
 
