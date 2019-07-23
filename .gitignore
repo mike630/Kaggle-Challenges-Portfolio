@@ -1,5 +1,5 @@
-.Rhistory
-.RData
+*.Rhistory
+*.RData
 *.json
 *.csv
 *.zip
