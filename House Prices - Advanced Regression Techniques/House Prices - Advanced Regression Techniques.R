@@ -839,24 +839,22 @@ xgboost_prev = predict(xgboost_mod2, dtest)
                        #shrinkage = c(0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7), 
                        #n.minobsinnode = c(4,5,6,7,8,9,10))
 
-nrow(gbmGrid)
+#nrow(gbmGrid)
 
+#set.seed(5000000)
+#gbm_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                 #method = "gbm", 
+                 #metric = "RMSE", trControl = my_control, 
+                 #tuneGrid =  gbmGrid)
 
-set.seed(5000000)
-gbm_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
-                 method = "gbm", 
-                 metric = "RMSE", trControl = my_control, 
-                 tuneGrid =  gbmGrid)
-
-gbm_mod$results
-gbm_mod$bestTune
-gbm_mod$results$RMSE[gbm_mod$results$shrinkage == 0.1 &
-                       gbm_mod$results$interaction.depth == 6 &
-                       gbm_mod$results$n.minobsinnode == 4]
+#gbm_mod$results
+#gbm_mod$bestTune
+#gbm_mod$results$RMSE[gbm_mod$results$shrinkage == 0.1 &
+                       #gbm_mod$results$interaction.depth == 6 &
+                       #gbm_mod$results$n.minobsinnode == 4]
 
 # Salvando Modelo
-saveRDS(gbm_mod, file = 'gbm_mod.rda')
-gbm_mod <- readRDS('gbm_mod.rda')
+# saveRDS(gbm_mod, file = 'gbm_mod.rda')
 
 gbmGrid2 <- expand.grid(n.trees = 300, 
                         interaction.depth = c(6), 
