@@ -1,0 +1,7 @@
+.Rhistory
+.RData
+*.json
+*.csv
+*.zip
+*.txt
+*.pbix
