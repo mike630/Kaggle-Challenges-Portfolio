@@ -711,6 +711,13 @@ categoricalVars2 <- which(sapply(all,is.factor))
 dummy <- as.data.frame(model.matrix(~.-1,all[,categoricalVars2]))
 dim(dummy)
 
+# Removendo levels com pouca observação no dataset train
+
+ZerocolTrain <- which(colSums(dummy)<10) # removendo menos que 10
+colnames(dummy[ZerocolTrain])
+dummy <- dummy[,-ZerocolTrain] #removendo
+dim(dummy)
+
 # Juntando variáveis numéricas com variáveis dummies
 trainClean <- cbind(trainClean_NumVars,dummy, all$SalePrice)
 colnames(trainClean)[which(colnames(trainClean)== 'all$SalePrice')] <- 'SalePrice'
@@ -737,7 +744,7 @@ summary(lm_mod)
 
 # Verificando com validações
 treino_mod = lm(SalePrice ~ .,data = treino)
-summary(lm_mod)
+summary(treino_mod)
 modelo7_prev = predict(treino_mod, teste[,-which(colnames(treino)=='SalePrice')])
 RMSE(pred = modelo7_prev, obs = teste[,'SalePrice'])
 
@@ -826,12 +833,54 @@ xgb.ggplot.importance(importance_matrix = mat[1:20], rel_to_first = TRUE)
 
 xgboost_prev = predict(xgboost_mod2, dtest)
 
+# Gradiente Boost Model - GBM
+# gbmGrid <- expand.grid(n.trees = 150, 
+                       #interaction.depth = c(2,3,4,5,6), 
+                       #shrinkage = c(0.05,0.1,0.2,0.3,0.4,0.5,0.6,0.7), 
+                       #n.minobsinnode = c(4,5,6,7,8,9,10))
+
+nrow(gbmGrid)
+
+
+set.seed(5000000)
+gbm_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                 method = "gbm", 
+                 metric = "RMSE", trControl = my_control, 
+                 tuneGrid =  gbmGrid)
+
+gbm_mod$results
+gbm_mod$bestTune
+gbm_mod$results$RMSE[gbm_mod$results$shrinkage == 0.1 &
+                       gbm_mod$results$interaction.depth == 6 &
+                       gbm_mod$results$n.minobsinnode == 4]
+
+# Salvando Modelo
+saveRDS(gbm_mod, file = 'gbm_mod.rda')
+gbm_mod <- readRDS('gbm_mod.rda')
+
+gbmGrid2 <- expand.grid(n.trees = 300, 
+                        interaction.depth = c(6), 
+                        shrinkage = c(0.13),
+                        n.minobsinnode = c(4))
+
+gbm_mod2 <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                 method = "gbm", 
+                 metric = "RMSE", trControl = my_control, 
+                 tuneGrid =  gbmGrid2)
+
+gbm_mod2
+
+# Prevendo as vendas
+gbm_prev = predict(gbm_mod2, trainClean[is.na(trainClean$SalePrice),
+                                        -which(colnames(trainClean)=='SalePrice')])
+
+
 #Correlacao
-correlacao <- cbind(lm_prev,lasso_prev,xgboost_prev)
+correlacao <- cbind(lm_prev,lasso_prev,xgboost_prev,gbm_prev)
 cor(correlacao)
 
 # Previsao Finallasso_prev
-previsao <- (((2*lasso_prev)+(3*lm_prev)+xgboost_prev)/6)
+previsao <- (((3*lasso_prev)+(4*lm_prev)+(2*xgboost_prev)+gbm_prev)/10)
 
 previsao <- as.data.frame(exp(previsao))#need to reverse the log to the real values
 
