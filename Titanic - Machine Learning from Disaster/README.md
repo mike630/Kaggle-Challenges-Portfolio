@@ -2,4 +2,4 @@
 
 ### For more information and dataset download:
 
-[`Kaggle Competition Link`] (https://www.kaggle.com/c/titanic)
+[`Kaggle Competition Link`](https://www.kaggle.com/c/titanic)
