@@ -1,7 +1,17 @@
+# Selecionando diretório
 setwd('C:/Projetos/Kaggle/House Prices - Advanced Regression Techniques')
 
-install.packages('ggrepel')
-install.packages('psych')
+# install.packages('corrplot')  # Instalar pacotes caso não houver
+# install.packages('knitr') 
+# install.packages('randomForest') 
+# install.packages('caret') 
+# install.packages('dplyr') 
+# install.packages('ggplot2') 
+# install.packages('ggrepel') 
+# install.packages('psych') 
+# install.packages('xgboost') 
+# install.packages('ggrepel')
+# install.packages('psych')
 
 library(corrplot)
 library(knitr)
@@ -183,45 +193,45 @@ trainClean1 <- trainClean[amostra==1,]
 trainClean2 <- trainClean[amostra==2,]
 
 # Modelo 1
-set.seed(2017)
-modelo = randomForest(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
-                        OverallQual+OverallCond+YearBuilt+
-                        YearRemodAdd+Exterior1st+Exterior2nd+ExterQual+BsmtQual +BsmtExposure+
-                        BsmtFinType1+X1stFlrSF+X2ndFlrSF, 
-                        data = trainClean1, ntree= 350)
+# set.seed(2017)
+# modelo = randomForest(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
+                        # OverallQual+OverallCond+YearBuilt+
+                        # YearRemodAdd+Exterior1st+Exterior2nd+ExterQual+BsmtQual +BsmtExposure+
+                        # BsmtFinType1+X1stFlrSF+X2ndFlrSF, 
+                        # data = trainClean1, ntree= 350)
 
-plot(modelo)
-summary(modelo$importance)
-varImpPlot(modelo)
-View(importance(modelo))
+# plot(modelo)
+# summary(modelo$importance)
+# varImpPlot(modelo)
+# View(importance(modelo))
 
 # Modelo 2
-set.seed(12345)
-modelo2 = train(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
-                  OverallQual+OverallCond+YearBuilt+
-                  YearRemodAdd+Exterior1st+Exterior2nd+ExterQual+BsmtQual +BsmtExposure+
-                  BsmtFinType1+X1stFlrSF+X2ndFlrSF, 
-                data = trainClean1, method= 'rf', 
-                trControl=trainControl(method="cv", number=7))
+# set.seed(12345)
+# modelo2 = train(MasVnrType~MSSubClass+LotArea+LotShape+LotConfig+Neighborhood+
+                  # OverallQual+OverallCond+YearBuilt+
+                  # YearRemodAdd+Exterior1st+Exterior2nd+ExterQual+BsmtQual +BsmtExposure+
+                  # BsmtFinType1+X1stFlrSF+X2ndFlrSF, 
+                # data = trainClean1, method= 'rf', 
+                # trControl=trainControl(method="cv", number=7))
 
-plot(modelo2)
-modelo2$results
-class(modelo2)
-a <- varImp(modelo2,scale = T)
-View(a$importance)
+# plot(modelo2)
+# modelo2$results
+# class(modelo2)
+# a <- varImp(modelo2,scale = T)
+# View(a$importance)
 
-previsao = predict(modelo, trainClean2)
-previsao2 = predict(modelo2, trainClean2)
+# previsao = predict(modelo, trainClean2)
+# previsao2 = predict(modelo2, trainClean2)
 
-previsao <- as.factor(previsao)
-previsao2 = as.factor(previsao2)
-trainClean2$MasVnrType <- as.factor(trainClean2$MasVnrType)
+# previsao <- as.factor(previsao)
+# previsao2 = as.factor(previsao2)
+# trainClean2$MasVnrType <- as.factor(trainClean2$MasVnrType)
 
-confusao = confusionMatrix(reference = trainClean2$MasVnrType, data = previsao)
-confusao
+# confusao = confusionMatrix(reference = trainClean2$MasVnrType, data = previsao)
+# confusao
 
-confusao2 = confusionMatrix(reference = trainClean2$MasVnrType, data = previsao2)
-confusao2
+# confusao2 = confusionMatrix(reference = trainClean2$MasVnrType, data = previsao2)
+# confusao2
 
 # Previsao final será com o modelo1 
 
@@ -252,42 +262,43 @@ all$MasVnrArea <- ifelse(all$MasVnrType != 'None' & is.na(all$MasVnrArea),
 
 # Modelagem e Previsao para imputar os dados para o LotFrontage no train
 
-ggplot(all[!is.na(all$SalePrice),], aes(x = LotFrontage, y= LotArea)) +
-  geom_point(col = 'green') + geom_smooth(method = 'lm', se = F, col = 'blue' ) + ylim(0,75000)
+# ggplot(all[!is.na(all$SalePrice),], aes(x = LotFrontage, y= LotArea)) +
+# geom_point(col = 'green') + geom_smooth(method = 'lm', se = F, col = 'blue' ) + ylim(0,75000)
+
 # Como podemos perceber pela análise do Power BI e pela correlação acima quanto maior a 
 # LotArea, maior tendência do LotFrontage ser maior também.
 # Para imputar os dados, devo verificar a possibilidade de prever o valor de cada NA de LotFrontage
 # com regressão.
 
 # Amostra Holdout
-trainClean <- all[!is.na(all$LotFrontage) & !is.na(all$TotalBsmtSF),]
-testClean <- all[is.na(all$LotFrontage) & !is.na(all$TotalBsmtSF),]
+# trainClean <- all[!is.na(all$LotFrontage) & !is.na(all$TotalBsmtSF),]
+# testClean <- all[is.na(all$LotFrontage) & !is.na(all$TotalBsmtSF),]
 
-amostra = sample(2,dim(trainClean)[1], replace = T, prob = c(0.7,0.3))
+# amostra = sample(2,dim(trainClean)[1], replace = T, prob = c(0.7,0.3))
 
-trainClean1 <- trainClean[amostra==1,]
-trainClean2 <- trainClean[amostra==2,]
+# trainClean1 <- trainClean[amostra==1,]
+# trainClean2 <- trainClean[amostra==2,]
 
 # Modelo 1
-set.seed(2017)
-modelo4 = lm(LotFrontage~LotArea+Neighborhood+X1stFlrSF+TotRmsAbvGrd+GarageArea,
-            data = trainClean1)
+# set.seed(2017)
+# modelo4 = lm(LotFrontage~LotArea+Neighborhood+X1stFlrSF+TotRmsAbvGrd+GarageArea,
+            # data = trainClean1)
 
-modelo4
-summary(modelo4)
+# modelo4
+# summary(modelo4)
 
 # Modelo 2
-set.seed(12345)
-modelo5 = train(LotFrontage~LotArea+Neighborhood+X1stFlrSF+TotRmsAbvGrd+
-                GarageArea,data = trainClean1, 
-                method= 'lm',trControl=trainControl(method="cv", number=7))
+# set.seed(12345)
+# modelo5 = train(LotFrontage~LotArea+Neighborhood+X1stFlrSF+TotRmsAbvGrd+
+                # GarageArea,data = trainClean1, 
+                # method= 'lm',trControl=trainControl(method="cv", number=7))
 
-modelo5
+# modelo5
 
-modelo5$results
-summary(modelo5)
-sort(summary(modelo5)$coefficients[,4], decreasing  = F)
-class(modelo5)
+# modelo5$results
+# summary(modelo5)
+# sort(summary(modelo5)$coefficients[,4], decreasing  = F)
+# class(modelo5)
 
 # Podemos verificar pela R-squared e Adj R-squared, além do RMSE, MAE que o
 # modelo não é tão bom para prever os missing values da variável LotFrontage
@@ -728,17 +739,21 @@ dim(trainClean)
 #------------------------------------------------------------------------------------------
 # Modelagem e previsao final
  
-my_control <- trainControl(method="cv", number=10)
+# my_control <- trainControl(method="cv", number=10)
 
-amostra = sample(2,dim(trainClean)[1], replace = T, prob = c(0.7,0.3))
+# amostra = sample(2,dim(trainClean)[1], replace = T, prob = c(0.7,0.3))
 
-treino = trainClean[!is.na(trainClean$SalePrice) & amostra==1,] 
+# treino = trainClean[!is.na(trainClean$SalePrice) & amostra==1,] 
 
-teste = trainClean[!is.na(trainClean$SalePrice) & amostra==2,]
+# teste = trainClean[!is.na(trainClean$SalePrice) & amostra==2,]
 
 # Modelo 7
-set.seed(2017)
-lm_mod = lm(SalePrice ~ .,data = trainClean[!is.na(trainClean$SalePrice),])
+# set.seed(2017)
+# lm_mod = lm(SalePrice ~ .,data = trainClean[!is.na(trainClean$SalePrice),])
+
+# Salvando modelo e carregando-o.
+# saveRDS(lm_mod, file = 'lm_mod.rda')
+lm_mod <- readRDS('lm_mod.rda') #BAIXAR ARQUIVO .RDA DO MODELO NO GITHUB
 
 summary(lm_mod)
 
@@ -748,16 +763,22 @@ summary(treino_mod)
 modelo7_prev = predict(treino_mod, teste[,-which(colnames(treino)=='SalePrice')])
 RMSE(pred = modelo7_prev, obs = teste[,'SalePrice'])
 
+
 # Prevendo as vendas
 lm_prev = predict(lm_mod,trainClean[is.na(trainClean$SalePrice),
                                     -which(colnames(trainClean)=='SalePrice')])
 
 # Lasso Modelo
-set.seed(50000)
-lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.00001,0.1,by = 0.0005))
+# set.seed(50000)
+# lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.00001,0.1,by = 0.0005))
 # alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
-lasso_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
-                   method='glmnet', trControl= my_control,tuneGrid=lassoGrid) 
+
+# lasso_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                   #method='glmnet', trControl= my_control,tuneGrid=lassoGrid) 
+
+# Salvando modelo e carregando-o.
+# saveRDS(lasso_mod, file = 'lasso_mod.rda')
+lasso_mod <- readRDS('lasso_mod.rda') #BAIXAR ARQUIVO .RDA DO MODELO NO GITHUB
 
 lasso_mod
 lasso_mod$bestTune
@@ -773,42 +794,43 @@ lasso_prev = predict(lasso_mod, trainClean[is.na(trainClean$SalePrice),
                                            -which(colnames(trainClean)=='SalePrice')])
 
 # Ridge Modelo
-set.seed(50000)
-ridgeGrid <- expand.grid(alpha = 0, lambda = seq(0.00001,0.1,by = 0.0005)) 
+# set.seed(50000)
+# ridgeGrid <- expand.grid(alpha = 0, lambda = seq(0.00001,0.1,by = 0.0005)) 
 # alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
-ridge_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
-                   method='glmnet',trControl= my_control,tuneGrid=ridgeGrid) 
 
-ridge_mod
-ridge_mod$bestTune
-min(ridge_mod$results$RMSE)
-min(ridge_mod$results$MAE)
-max(ridge_mod$results$Rsquared)
+# ridge_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                   # method='glmnet',trControl= my_control,tuneGrid=ridgeGrid) 
+
+# ridge_mod
+# ridge_mod$bestTune
+# min(ridge_mod$results$RMSE)
+# min(ridge_mod$results$MAE)
+# max(ridge_mod$results$Rsquared)
 
 
 # Elastic Net Modelo
-set.seed(50000)
-elasticnet_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),],
-                        method='glmnet', trControl= my_control, tuneLength = 25) 
+# set.seed(50000)
+# elasticnet_mod <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),],
+                        # method='glmnet', trControl= my_control, tuneLength = 25) 
 
-elasticnet_mod
-elasticnet_mod$bestTune
-min(elasticnet_mod$results$RMSE)
-min(elasticnet_mod$results$MAE)
-max(elasticnet_mod$results$Rsquared)
+# elasticnet_mod
+# elasticnet_mod$bestTune
+# min(elasticnet_mod$results$RMSE)
+# min(elasticnet_mod$results$MAE)
+# max(elasticnet_mod$results$Rsquared)
 
 # eXtreme Gradient Boosting - XGBoost
-xgb_params <- list(
-  booster = 'gbtree',
-  objective = 'reg:linear',
-  colsample_bytree=0.9,
-  eta=0.071,
-  max_depth=2,
-  min_child_weight=5,
-  alpha=0.41,
-  lambda=0.35,
-  gamma=0.0001, # less overfit
-  subsample=0.8)
+# xgb_params <- list(
+# booster = 'gbtree',
+# objective = 'reg:linear',
+# colsample_bytree=0.9,
+# eta=0.071,
+# max_depth=2,
+# min_child_weight=5,
+# alpha=0.41,
+# lambda=0.35,
+# gamma=0.0001, # less overfit
+# subsample=0.8)
 
 dtrain <- xgb.DMatrix(as.matrix(trainClean[!is.na(trainClean$SalePrice),
                                            -which(colnames(trainClean)=='SalePrice')]),
@@ -817,11 +839,15 @@ dtrain <- xgb.DMatrix(as.matrix(trainClean[!is.na(trainClean$SalePrice),
 dtest <- xgb.DMatrix(as.matrix(trainClean[is.na(trainClean$SalePrice),
                                           -which(colnames(trainClean)=='SalePrice')]))
 
-set.seed(50000)
-xgboost_mod <- xgb.cv(xgb_params, data = dtrain,nrounds = 1000, metrics = 'rmse', 
-                      print_every_n = 50, nfold = 10)
+# set.seed(50000)
+# xgboost_mod <- xgb.cv(xgb_params, data = dtrain,nrounds = 1000, metrics = 'rmse', 
+                      # print_every_n = 50, nfold = 10)
 
-xgboost_mod2 <- xgb.train(data = dtrain, params=xgb_params, nrounds = 1000)
+# set.seed(50000)
+# xgboost_mod2 <- xgb.train(data = dtrain, params=xgb_params, nrounds = 1000)
+
+# saveRDS(xgboost_mod2, file = 'xgboost_mod2.rda')
+xgboost_mod2 <- readRDS('xgboost_mod2.rda') #BAIXAR ARQUIVO .RDA DO MODELO NO GITHUB
 
 # Importância
 mat <- xgb.importance (feature_names = colnames(trainClean[!is.na(trainClean$SalePrice),
@@ -830,7 +856,7 @@ mat <- xgb.importance (feature_names = colnames(trainClean[!is.na(trainClean$Sal
 
 xgb.ggplot.importance(importance_matrix = mat[1:20], rel_to_first = TRUE)
 
-
+# Prevendo as vendas
 xgboost_prev = predict(xgboost_mod2, dtest)
 
 # Gradiente Boost Model - GBM
@@ -856,15 +882,19 @@ xgboost_prev = predict(xgboost_mod2, dtest)
 # Salvando Modelo
 # saveRDS(gbm_mod, file = 'gbm_mod.rda')
 
-gbmGrid2 <- expand.grid(n.trees = 300, 
-                        interaction.depth = c(6), 
-                        shrinkage = c(0.13),
-                        n.minobsinnode = c(4))
 
-gbm_mod2 <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
-                 method = "gbm", 
-                 metric = "RMSE", trControl = my_control, 
-                 tuneGrid =  gbmGrid2)
+# gbmGrid2 <- expand.grid(n.trees = 300, 
+                        #interaction.depth = c(6), 
+                        #shrinkage = c(0.13),
+                        #n.minobsinnode = c(4))
+
+# gbm_mod2 <- train(SalePrice~., data = trainClean[!is.na(trainClean$SalePrice),], 
+                 #method = "gbm", 
+                 #metric = "RMSE", trControl = my_control, 
+                 #tuneGrid =  gbmGrid2)
+
+# saveRDS(gbm_mod2, file = 'gbm_mod2.rda')
+gbm_mod2 <- readRDS('gbm_mod2.rda') #BAIXAR ARQUIVO .RDA DO MODELO NO GITHUB
 
 gbm_mod2
 
@@ -879,6 +909,7 @@ cor(correlacao)
 
 # Previsao Finallasso_prev
 previsao <- (((3*lasso_prev)+(4*lm_prev)+(2*xgboost_prev)+gbm_prev)/10)
+# média ponderada para os modelos mais eficientes, classificados de forma ordinal.
 
 previsao <- as.data.frame(exp(previsao))#need to reverse the log to the real values
 

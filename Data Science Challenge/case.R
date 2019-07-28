@@ -3,15 +3,15 @@ setwd('C:/Projetos/Kaggle/Data Science Challenge')
 
 #--------------------------------------------------------------------------
 # Instalando pacotes
-install.packages("jsonlite")
-install.packages('knitr')
-install.packages('ggplot2')
-install.packages('gridExtra')
-install.packages('psych')
-install.packages('caret')
-install.packages('mice')
-install.packages('xgboost')
-install.packages('corrplot')
+# install.packages("jsonlite") # Instalar pacotes caso não houver
+# install.packages('knitr')
+# install.packages('ggplot2')
+# install.packages('gridExtra')
+# install.packages('psych')
+# install.packages('caret')
+# install.packages('mice')
+# install.packages('xgboost')
+# install.packages('corrplot')
 #--------------------------------------------------------------------------
 # Carregando pacotes requeridos
 library(jsonlite)
@@ -352,42 +352,47 @@ allClean$`all$id` <- NULL
 
 # Executando nosso modelo
 
-set.seed(5000000)
-
 #Cross Validation
-my_control <-trainControl(method="cv", number=10)
+# my_control <-trainControl(method="cv", number=10)
 
 # Lasso Modelo
-lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.0001,0.1,by = 0.0005))
+# lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.0001,0.1,by = 0.0005))
 # alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
-lasso_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
-                   trControl= my_control,tuneGrid=lassoGrid) 
-lasso_mod
-lasso_mod$bestTune
-min(lasso_mod$results$RMSE)
-min(lasso_mod$results$MAE)
-max(lasso_mod$results$Rsquared)
-
-set.seed(5000000)
+# set.seed(5000000)
+# lasso_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
+                   # trControl= my_control,tuneGrid=lassoGrid) 
+# lasso_mod
+# lasso_mod$bestTune
+# min(lasso_mod$results$RMSE)
+# min(lasso_mod$results$MAE)
+# max(lasso_mod$results$Rsquared)
 
 # Ridge Modelo
-ridgeGrid <- expand.grid(alpha = 0, lambda = seq(0.0001,0.1,by = 0.0005)) 
+#ridgeGrid <- expand.grid(alpha = 0, lambda = seq(0.0001,0.1,by = 0.0005)) 
 # alpha = 1 (lasso), alpha = 0 (ridge) and a value between 0 and 1 (say 0.3) is elastic net regression.
-ridge_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
-                   trControl= my_control,tuneGrid=ridgeGrid) 
+# set.seed(5000000)
+# ridge_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
+                   # trControl= my_control,tuneGrid=ridgeGrid) 
  
-ridge_mod
-ridge_mod$bestTune
-min(ridge_mod$results$RMSE)
-min(ridge_mod$results$MAE)
-max(ridge_mod$results$Rsquared)
+# ridge_mod
+# ridge_mod$bestTune
+# min(ridge_mod$results$RMSE)
+# min(ridge_mod$results$MAE)
+# max(ridge_mod$results$Rsquared)
 
 
 # Elastic Net Modelo
-set.seed(5000000)
+# set.seed(5000000)
 
-elasticnet_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet', 
-                        trControl= my_control, tuneLength = 10) 
+# elasticnet_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method='glmnet',
+                          # trControl= my_control, tuneLength = 10) 
+
+# Diante das análises dos modelos do método glmnet acima, podemos verificar que Elastic Net cujo qual tem um um alpha 
+# entre 0 e 1, é o modelo mais eficiente entre os três.
+
+# Salvando modelo e carregando-o.
+# saveRDS(elasticnet_mod, file = 'elasticnet_mod.rda')
+elasticnet_mod <- readRDS('elasticnet_mod.rda') #BAIXAR ARQUIVO .RDA DO MODELO NO GITHUB
 
 elasticnet_mod
 elasticnet_mod$bestTune
@@ -395,71 +400,63 @@ min(elasticnet_mod$results$RMSE)
 min(elasticnet_mod$results$MAE)
 max(elasticnet_mod$results$Rsquared)
 
-# Diante das análises dos modelos do método glmnet acima, podemos verificar que Elastic Net cujo qual tem um um alpha 
-# entre 0 e 1, é o modelo mais eficiente entre os três.
-
-# Salvando Modelo
-saveRDS(elasticnet_mod, file = 'elasticnet_mod.rda')
-elasticnet_mod <- readRDS('elasticnet_mod.rda')
-
 # Prevendo as vendas
 elasticnet_prev = predict(elasticnet_mod, allClean[(dim(train3)[1]+1):dim(allClean)[1],])
 
 # eXtreme Gradient Boosting - XGBoost
-xgb_params <- list(
-  booster = 'gbtree',
-  objective = 'reg:linear',
-  colsample_bytree=1,
-  eta=0.55,
-  max_depth=4,
-  min_child_weight=3,
-  alpha=0.3,
-  lambda=0.25,
-  gamma=0, # less overfit
-  subsample=0.7)
+# xgb_params <- list(
+  #booster = 'gbtree',
+  #objective = 'reg:linear',
+  #colsample_bytree=1,
+  #eta=0.55,
+  #max_depth=4,
+  #min_child_weight=3,
+  #alpha=0.3,
+  #lambda=0.25,
+  #gamma=0, # less overfit
+  #subsample=0.7)
 
 dtrain <- xgb.DMatrix(as.matrix(allClean[1:dim(train3)[1],]), label = train3$price)
 dtest <- xgb.DMatrix(as.matrix(allClean[(dim(train3)[1]+1):dim(allClean)[1],]))
 
-set.seed(5000000)
-xgboost_mod <- xgb.cv(xgb_params, dtrain, nrounds = 750, metrics = 'rmse', 
-                      print_every_n = 50,nfold = 5,early_stopping_rounds = 200)
+# set.seed(5000000)
+# xgboost_mod <- xgb.cv(xgb_params, dtrain, nrounds = 750, metrics = 'rmse', 
+                      #print_every_n = 50,nfold = 5,early_stopping_rounds = 200)
 
- xgboost_mod$best_iteration
-xgboost_mod$best_ntreelimit
-xgboost_mod$evaluation_log$train_rmse_mean[xgboost_mod$best_iteration]
-xgboost_mod$evaluation_log$test_rmse_mean[xgboost_mod$best_iteration]
+# xgboost_mod$best_iteration
+# xgboost_mod$best_ntreelimit
+# xgboost_mod$evaluation_log$train_rmse_mean[xgboost_mod$best_iteration]
+# xgboost_mod$evaluation_log$test_rmse_mean[xgboost_mod$best_iteration]
 
-set.seed(5000000)
-xgboost_mod2 <- xgb.train(data = dtrain, params=xgb_params, nrounds = 721)
+# set.seed(5000000)
+# xgboost_mod2 <- xgb.train(data = dtrain, params=xgb_params, nrounds = 721)
 
-# Salvando Modelo
-saveRDS(xgboost_mod2, file = 'xgboost_mod2.rda')
-xgboost_mod2 <- readRDS('xgboost_mod2.rda')
+# Salvando modelo e carregando-o.
+# saveRDS(xgboost_mod2, file = 'xgboost_mod2.rda')
+xgboost_mod2 <- readRDS('xgboost_mod2.rda') #BAIXAR ARQUIVO .RDA DO MODELO NO GITHUB
 
  # Prevendo as vendas
 xgboost_prev = predict(xgboost_mod2, dtest)
 
 # Gradiente Boost Model - GBM
-gbmGrid <- expand.grid(n.trees = 150, 
-                       interaction.depth = c(2), 
-                       shrinkage = c(0.9), 
-                       n.minobsinnode = c(10))
+# gbmGrid <- expand.grid(n.trees = 150, 
+                      # interaction.depth = c(2), 
+                      # shrinkage = c(0.9), 
+                      # n.minobsinnode = c(10))
 
-nrow(gbmGrid)
+# nrow(gbmGrid)
 
-set.seed(5000000)
-gbm_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method = "gbm", 
-                metric = "RMSE", trControl = my_control, 
-                tuneGrid =  gbmGrid)
+# set.seed(5000000)
+# gbm_mod <- train(x=allClean[1:dim(train3)[1],], y=train3$price, method = "gbm", 
+                # metric = "RMSE", trControl = my_control, 
+                # tuneGrid =  gbmGrid)
 
+# Salvando modelo e carregando-o.
+# saveRDS(gbm_mod, file = 'gbm_mod.rda')
+gbm_mod <- readRDS('gbm_mod.rda') #BAIXAR ARQUIVO .RDA DO MODELO NO GITHUB
 
 gbm_mod$bestTune
 gbm_mod
-
-# Salvando Modelo
-saveRDS(gbm_mod, file = 'gbm_mod.rda')
-gbm_mod <- readRDS('gbm_mod.rda')
 
 # Prevendo as vendas
 gbm_prev = predict(gbm_mod, allClean[(dim(train3)[1]+1):dim(allClean)[1],])
