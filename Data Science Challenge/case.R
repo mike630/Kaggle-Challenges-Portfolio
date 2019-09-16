@@ -325,8 +325,11 @@ preNumVars
 all_NumVars <- predict(preNumVars,skewed)
 dim(all_NumVars)
 
-# Transformando variáveis categóricas em dummies para facilitar nosso modelo a prever
-# de forma mais eficiente.
+# ONE-HOT ENCODING
+# One-Hot encoding nada mais é do que transformar k fatores de cada variável categórica 
+# em k variáveis de cada variável categórica para facilitar nosso modelo a prever de 
+# forma mais eficiente e também porque não são todos os algoritmos que aceitam
+# variáveis categóricas a serem treinadas.
 
 
 categoricalVars <- which(sapply(all,is.factor))
